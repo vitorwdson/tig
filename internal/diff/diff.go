@@ -2,6 +2,7 @@ package diff
 
 import (
 	"bufio"
+	"fmt"
 	"io"
 	"slices"
 )
@@ -18,6 +19,20 @@ type Diff struct {
 	Block   int
 	Type    DiffType
 	Content []byte
+}
+
+func (d Diff) String() string {
+	prefix := ""
+	switch d.Type {
+	case ADD:
+		prefix = "+"
+	case REMOVE:
+		prefix = "-"
+	case REPLACE:
+		prefix = "~"
+	}
+
+	return fmt.Sprintf("%s %d: %s\n", prefix, d.Block+1, string(d.Content))
 }
 
 func fileDiff(old, new io.Reader, splitFunc bufio.SplitFunc) ([]Diff, error) {

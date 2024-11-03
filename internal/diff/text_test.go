@@ -87,7 +87,7 @@ func TestEmptyTextDiff(t *testing.T) {
 		d := diffs[i]
 
 		if e.Block != d.Block || e.Type != d.Type || !slices.Equal(e.Content, d.Content) {
-			t.Fatalf("expected %v, but got %v", expected, diffs)
+			t.Fatalf("expected:\n%vbut got:\n%v", e, d)
 		}
 	}
 }

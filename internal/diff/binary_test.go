@@ -283,15 +283,7 @@ func TestBinaryDiff(t *testing.T) {
 		d := diffs[i]
 
 		if e.Block != d.Block || e.Type != d.Type || !slices.Equal(e.Content, d.Content) {
-			t.Fatalf(
-				"expected block=%d type=%d\n%s\n\ngot block=%d type=%d\n%s",
-				e.Block,
-				e.Type,
-				string(e.Content),
-				d.Block,
-				d.Type,
-				string(d.Content),
-			)
+			t.Fatalf("expected:\n%vbut got:\n%v", e, d)
 		}
 	}
 }
