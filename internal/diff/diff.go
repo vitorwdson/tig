@@ -23,26 +23,26 @@ type Diff struct {
 func fileDiff(old, new io.Reader, splitFunc bufio.SplitFunc) ([]Diff, error) {
 	oldScanner := bufio.NewScanner(old)
 	oldScanner.Split(splitFunc)
-	oldLines := make([][]byte, 0, 10)
+	oldBlocks := make([][]byte, 0, 10)
 	for oldScanner.Scan() {
-		oldLines = append(oldLines, oldScanner.Bytes())
+		oldBlocks = append(oldBlocks, oldScanner.Bytes())
 	}
 
 	newScanner := bufio.NewScanner(new)
 	newScanner.Split(splitFunc)
-	newLines := make([][]byte, 0, 10)
+	newBlocks := make([][]byte, 0, 10)
 	for newScanner.Scan() {
-		newLines = append(newLines, newScanner.Bytes())
+		newBlocks = append(newBlocks, newScanner.Bytes())
 	}
 
 	var oldEnded, newEnded bool
+	var oldContent, newContent []byte
 	currOld, currNew := -1, -1
-	totalOld := len(oldLines)
-	totalNew := len(newLines)
+	totalOld := len(oldBlocks)
+	totalNew := len(newBlocks)
 	diffs := make([]Diff, 0, 10)
 
 	for {
-
 		oldEnded = currOld+1 >= totalOld
 		newEnded = currNew+1 >= totalNew
 
@@ -52,20 +52,38 @@ func fileDiff(old, new io.Reader, splitFunc bufio.SplitFunc) ([]Diff, error) {
 
 		if !oldEnded {
 			currOld++
+			oldContent = oldBlocks[currOld]
 		}
 
 		if !newEnded {
 			currNew++
+			newContent = newBlocks[currNew]
 		}
 
-		if slices.Equal(oldLines[currOld], newLines[currNew]) {
+		if slices.Equal(oldContent, newContent) {
+			continue
+		}
+
+		if oldEnded && !newEnded {
+			diffs = append(diffs, Diff{
+				Block:   currNew,
+				Type:    ADD,
+				Content: newContent,
+			})
+			continue
+		} else if !oldEnded && newEnded {
+			diffs = append(diffs, Diff{
+				Block:   currOld,
+				Type:    REMOVE,
+				Content: oldContent,
+			})
 			continue
 		}
 
 		hit := -1
 		if !oldEnded {
 			for i := currOld + 1; i < totalOld; i++ {
-				if slices.Equal(oldLines[i], newLines[currNew]) {
+				if slices.Equal(oldBlocks[i], newContent) {
 					hit = i
 					break
 				}
@@ -75,7 +93,7 @@ func fileDiff(old, new io.Reader, splitFunc bufio.SplitFunc) ([]Diff, error) {
 					diffs = append(diffs, Diff{
 						Block:   i,
 						Type:    REMOVE,
-						Content: oldLines[i],
+						Content: oldBlocks[i],
 					})
 				}
 				currOld = hit - 1
@@ -86,7 +104,7 @@ func fileDiff(old, new io.Reader, splitFunc bufio.SplitFunc) ([]Diff, error) {
 
 		if !newEnded {
 			for i := currNew + 1; i < totalNew; i++ {
-				if slices.Equal(newLines[i], oldLines[currOld]) {
+				if slices.Equal(newBlocks[i], oldContent) {
 					hit = i
 					break
 				}
@@ -96,7 +114,7 @@ func fileDiff(old, new io.Reader, splitFunc bufio.SplitFunc) ([]Diff, error) {
 					diffs = append(diffs, Diff{
 						Block:   i,
 						Type:    ADD,
-						Content: newLines[i],
+						Content: newBlocks[i],
 					})
 				}
 				currNew = hit - 1
@@ -108,7 +126,7 @@ func fileDiff(old, new io.Reader, splitFunc bufio.SplitFunc) ([]Diff, error) {
 		diffs = append(diffs, Diff{
 			Block:   currNew,
 			Type:    REPLACE,
-			Content: newLines[currNew],
+			Content: newContent,
 		})
 	}
 
